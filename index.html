@@ -3,213 +3,83 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>J.A.R.V.I.S. Live + Memory</title>
+  <title>J.A.R.V.I.S. Multi-Key Rotation</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      background: #040811;
-      color: #e2f1ff;
+      background: #040811; color: #e2f1ff;
       font-family: system-ui, -apple-system, sans-serif;
-      display: flex;
-      flex-direction: column;
-      height: 100dvh;
-      width: 100vw;
-      overflow: hidden;
+      display: flex; flex-direction: column; height: 100dvh; width: 100vw; overflow: hidden;
     }
     header {
-      padding: 10px 12px;
-      background: #091222;
-      border-bottom: 1px solid #1b3252;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
+      padding: 10px 12px; background: #091222; border-bottom: 1px solid #1b3252;
+      display: flex; justify-content: space-between; align-items: center;
     }
-    header h1 {
-      font-size: 14px;
-      letter-spacing: 1.5px;
-      color: #00f0ff;
-    }
+    header h1 { font-size: 14px; letter-spacing: 1.5px; color: #00f0ff; }
     .header-btns { display: flex; gap: 6px; }
     .small-btn {
-      background: #13243a;
-      color: #00f0ff;
-      border: 1px solid #00f0ff;
-      padding: 6px 10px;
-      border-radius: 6px;
-      font-size: 11px;
-      font-weight: 600;
-      cursor: pointer;
+      background: #13243a; color: #00f0ff; border: 1px solid #00f0ff;
+      padding: 6px 10px; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer;
     }
     #viewport {
-      position: relative;
-      flex: 1;
+      position: relative; flex: 1;
       background: radial-gradient(circle at center, #0d1b30 0%, #03070e 100%);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      overflow: hidden;
+      display: flex; align-items: center; justify-content: center; overflow: hidden;
     }
-    video {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      display: none;
-    }
-    #placeholder {
-      text-align: center;
-      color: #7a9ec7;
-      padding: 24px;
-      font-size: 14px;
-      line-height: 1.5;
-    }
-    #scanOverlay {
-      position: absolute;
-      inset: 16px;
-      border: 1px dashed rgba(0, 240, 255, 0.35);
-      border-radius: 12px;
-      pointer-events: none;
-      display: none;
-    }
-    #scanBadge {
-      position: absolute;
-      top: 12px;
-      left: 12px;
-      background: rgba(4, 8, 17, 0.75);
-      border: 1px solid #00f0ff;
-      color: #00f0ff;
-      padding: 4px 8px;
-      border-radius: 6px;
-      font-size: 11px;
-      font-family: monospace;
-      display: none;
-    }
+    video { width: 100%; height: 100%; object-fit: cover; display: none; }
+    #placeholder { text-align: center; color: #7a9ec7; padding: 24px; font-size: 14px; line-height: 1.5; }
     #reactor {
-      position: absolute;
-      bottom: 14px;
-      right: 14px;
-      width: 56px;
-      height: 56px;
-      border-radius: 50%;
-      background: radial-gradient(circle, #00f0ff 0%, #0044ff 65%, transparent 100%);
-      border: 2px solid #00f0ff;
-      box-shadow: 0 0 16px #00f0ff;
-      transition: transform 0.1s ease, border-color 0.2s ease;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 10px;
-      font-weight: bold;
-      color: #fff;
-    }
-    .vad-recording {
-      border-color: #00ff9d !important;
-      box-shadow: 0 0 28px #00ff9d !important;
-      background: radial-gradient(circle, #00ff9d 0%, #006644 65%, transparent 100%) !important;
+      position: absolute; bottom: 14px; right: 14px; width: 56px; height: 56px;
+      border-radius: 50%; background: radial-gradient(circle, #00f0ff 0%, #0044ff 65%, transparent 100%);
+      border: 2px solid #00f0ff; box-shadow: 0 0 16px #00f0ff;
+      display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: bold; color: #fff;
     }
     .speaking { animation: pulseSpeak 0.35s infinite alternate; }
-    @keyframes pulseSpeak {
-      from { transform: scale(1); }
-      to { transform: scale(1.3); }
-    }
-    /* Memory Vault Modal Drawer */
+    @keyframes pulseSpeak { from { transform: scale(1); } to { transform: scale(1.3); } }
     #memoryModal {
-      position: fixed;
-      inset: 0;
-      background: rgba(3, 7, 15, 0.94);
-      z-index: 100;
-      display: none;
-      flex-direction: column;
-      padding: 16px;
+      position: fixed; inset: 0; background: rgba(3, 7, 15, 0.94);
+      z-index: 100; display: none; flex-direction: column; padding: 16px;
     }
     .modal-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      border-bottom: 1px solid #00f0ff;
-      padding-bottom: 10px;
-      margin-bottom: 10px;
+      display: flex; justify-content: space-between; align-items: center;
+      border-bottom: 1px solid #00f0ff; padding-bottom: 10px; margin-bottom: 10px;
     }
     .modal-header h2 { font-size: 15px; color: #00f0ff; }
     #memoryContent {
-      flex: 1;
-      overflow-y: auto;
-      font-family: monospace;
-      font-size: 12px;
-      color: #c9e4ff;
-      white-space: pre-wrap;
-      line-height: 1.45;
-      background: #07101e;
-      padding: 10px;
-      border-radius: 8px;
-      border: 1px solid #1b3252;
-    }
-    .modal-actions {
-      display: flex;
-      gap: 8px;
-      margin-top: 10px;
+      flex: 1; overflow-y: auto; font-family: monospace; font-size: 12px;
+      color: #c9e4ff; white-space: pre-wrap; background: #07101e;
+      padding: 10px; border-radius: 8px; border: 1px solid #1b3252;
     }
     #controls {
-      background: #091222;
-      border-top: 2px solid #00f0ff;
-      padding: 10px 12px;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
+      background: #091222; border-top: 2px solid #00f0ff;
+      padding: 10px 12px; display: flex; flex-direction: column; gap: 8px;
     }
-    .row {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px;
-    }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
     input, select {
-      width: 100%;
-      background: #040811;
-      color: #ffffff;
-      border: 1px solid #233e63;
-      padding: 9px 10px;
-      border-radius: 7px;
-      font-size: 13px;
+      width: 100%; background: #040811; color: #ffffff;
+      border: 1px solid #233e63; padding: 9px 10px; border-radius: 7px; font-size: 13px;
     }
     button.main-btn {
-      padding: 12px;
-      border-radius: 8px;
-      font-size: 14px;
-      font-weight: 700;
-      border: none;
-      cursor: pointer;
-      background: #00f0ff;
-      color: #040811;
+      padding: 12px; border-radius: 8px; font-size: 14px; font-weight: 700;
+      border: none; cursor: pointer; background: #00f0ff; color: #040811;
     }
     button.talk-btn {
-      padding: 12px;
-      border-radius: 8px;
-      font-size: 14px;
-      font-weight: 700;
-      border: 1px solid #00f0ff;
-      cursor: pointer;
-      background: #13243a;
-      color: #e2f1ff;
+      padding: 12px; border-radius: 8px; font-size: 14px; font-weight: 700;
+      border: 1px solid #00f0ff; cursor: pointer; background: #13243a; color: #e2f1ff;
     }
     button:disabled { opacity: 0.45; }
     .danger { background: #ff3b5c !important; color: #ffffff !important; border: none !important; }
     #logBox {
-      height: 80px;
-      background: #02050a;
-      border: 1px solid #1b3252;
-      border-radius: 6px;
-      padding: 7px;
-      font-family: monospace;
-      font-size: 11px;
-      color: #00ff9d;
-      overflow-y: auto;
-      white-space: pre-wrap;
+      height: 80px; background: #02050a; border: 1px solid #1b3252;
+      border-radius: 6px; padding: 7px; font-family: monospace;
+      font-size: 11px; color: #00ff9d; overflow-y: auto; white-space: pre-wrap;
     }
   </style>
 </head>
 <body>
 
   <header>
-    <h1>J.A.R.V.I.S. LIVE</h1>
+    <h1>J.A.R.V.I.S. MULTI-KEY</h1>
     <div class="header-btns">
       <button id="memBtn" class="small-btn">Memory (0)</button>
       <button id="flipBtn" class="small-btn">Flip Cam</button>
@@ -218,136 +88,73 @@
 
   <div id="viewport">
     <div id="placeholder">
-      <b>J.A.R.V.I.S. Multimodal + Long-Term Memory</b><br><br>
-      • Remembers all past conversations & dates<br>
-      • Auto-saves key facts to Core Memory<br>
-      • 3-Frame Live Camera Vision
+      <b>J.A.R.V.I.S. Multi-Key Setup</b><br><br>
+      • Automatic Key Rotation on 429 Limits<br>
+      • Persistent Local Memory Vault<br>
+      • Powered by Gemini Flash
     </div>
     <video id="camera" autoplay playsinline muted></video>
-    <div id="scanOverlay"></div>
-    <div id="scanBadge">LIVE SCAN: 0 FRAMES</div>
     <div id="reactor">IDLE</div>
     <canvas id="snapCanvas" style="display:none;"></canvas>
   </div>
 
-  <!-- Memory Vault Drawer -->
   <div id="memoryModal">
     <div class="modal-header">
       <h2>J.A.R.V.I.S. MEMORY VAULT</h2>
       <button id="closeMemBtn" class="small-btn">Close</button>
     </div>
     <div id="memoryContent"></div>
-    <div class="modal-actions">
-      <button id="exportMemBtn" class="small-btn" style="flex:1; padding:10px;">Export JSON</button>
-      <button id="clearMemBtn" class="small-btn danger" style="flex:1; padding:10px;">Clear All Memory</button>
-    </div>
   </div>
 
   <div id="controls">
-    <input type="password" id="apiKey" placeholder="Paste Groq API Key (gsk_...)" />
     <div class="row">
-      <select id="sttMode">
-        <option value="auto_whisper">Mic: Auto Hands-Free Whisper</option>
-        <option value="browser_in">Mic: Fast Browser STT (English-India)</option>
-      </select>
-      <select id="wakeFilter">
-        <option value="all">Reply to Everything</option>
-        <option value="jarvis">Require "Jarvis" Wake Word</option>
-      </select>
+      <input type="password" id="key1" placeholder="API Key 1 (Account 1)" />
+      <input type="password" id="key2" placeholder="API Key 2 (Account 2)" />
     </div>
+    <input type="password" id="key3" placeholder="API Key 3 (Account 3)" />
     <div class="row">
       <button id="startBtn" class="main-btn">Start Live Call</button>
-      <button id="manualTalkBtn" class="talk-btn" disabled>Tap to Speak Now</button>
+      <button id="manualTalkBtn" class="talk-btn" disabled>Ask Jarvis (Type)</button>
     </div>
-    <div id="logBox">Ready. All conversations are saved automatically.</div>
+    <div id="logBox">Ready. Enter your 3 API keys above.</div>
   </div>
 
   <script>
     const videoEl = document.getElementById("camera");
     const placeholderEl = document.getElementById("placeholder");
-    const scanOverlay = document.getElementById("scanOverlay");
-    const scanBadge = document.getElementById("scanBadge");
     const canvasEl = document.getElementById("snapCanvas");
     const reactorEl = document.getElementById("reactor");
     const logBox = document.getElementById("logBox");
     const startBtn = document.getElementById("startBtn");
     const manualTalkBtn = document.getElementById("manualTalkBtn");
-    const apiKeyInput = document.getElementById("apiKey");
     const memBtn = document.getElementById("memBtn");
     const memoryModal = document.getElementById("memoryModal");
     const memoryContent = document.getElementById("memoryContent");
 
-    // 1. Load API Key & Persistent Memory from LocalStorage
-    apiKeyInput.value = localStorage.getItem("groq_key") || "";
-    apiKeyInput.addEventListener("input", () => {
-      localStorage.setItem("groq_key", apiKeyInput.value.trim());
+    const k1 = document.getElementById("key1");
+    const k2 = document.getElementById("key2");
+    const k3 = document.getElementById("key3");
+
+    k1.value = localStorage.getItem("j_k1") || "";
+    k2.value = localStorage.getItem("j_k2") || "";
+    k3.value = localStorage.getItem("j_k3") || "";
+
+    [k1, k2, k3].forEach((el, idx) => {
+      el.addEventListener("input", () => localStorage.setItem("j_k" + (idx+1), el.value.trim()));
     });
 
-    // Full conversation log: [{ role, content, timestamp }]
     let fullArchive = JSON.parse(localStorage.getItem("jarvis_archive") || "[]");
-    // Core permanent facts: ["User owns a Vivo Y300", ...]
     let coreFacts = JSON.parse(localStorage.getItem("jarvis_facts") || "[]");
 
     function updateMemoryBadge() {
-      const turns = Math.floor(fullArchive.length / 2);
-      memBtn.textContent = "Memory (" + turns + " chats | " + coreFacts.length + " facts)";
+      memBtn.textContent = "Memory (" + Math.floor(fullArchive.length / 2) + " chats | " + coreFacts.length + " facts)";
     }
     updateMemoryBadge();
 
-    function saveMemoryToDisk() {
-      localStorage.setItem("jarvis_archive", JSON.stringify(fullArchive));
-      localStorage.setItem("jarvis_facts", JSON.stringify(coreFacts));
-      updateMemoryBadge();
+    let currentKeyIdx = 0;
+    function getActiveKeys() {
+      return [k1.value.trim(), k2.value.trim(), k3.value.trim()].filter(k => k.length > 5);
     }
-
-    // 2. Smart Memory Search (Finds relevant older conversations by keyword)
-    function searchPastArchive(query) {
-      if (fullArchive.length <= 8) return "";
-      const stopWords = new Set(["what", "when", "where", "which", "who", "whom", "this", "that", "these", "those", "have", "from", "with", "about", "jarvis", "tell", "remember", "did", "you", "the", "and", "for"]);
-      const words = query.toLowerCase().replace(/[^a-z0-9\s]/g, "").split(/\s+/).filter(w => w.length > 2 && !stopWords.has(w));
-      if (words.length === 0) return "";
-
-      // Search older messages (excluding the last 8 which are already in recent context)
-      const olderHistory = fullArchive.slice(0, -8);
-      const scoredMatches = [];
-
-      for (let i = 0; i < olderHistory.length; i++) {
-        const entry = olderHistory[i];
-        const textLower = entry.content.toLowerCase();
-        let score = 0;
-        for (const w of words) {
-          if (textLower.includes(w)) score++;
-        }
-        if (score > 0) {
-          // Include the paired reply if available
-          const nextEntry = olderHistory[i + 1];
-          const pairText = "[" + entry.timestamp + "] " + entry.role.toUpperCase() + ": " + entry.content +
-            (nextEntry ? "\n[" + nextEntry.timestamp + "] " + nextEntry.role.toUpperCase() + ": " + nextEntry.content : "");
-          scoredMatches.push({ score, pairText });
-        }
-      }
-
-      scoredMatches.sort((a, b) => b.score - a.score);
-      return scoredMatches.slice(0, 4).map(m => m.pairText).join("\n---\n");
-    }
-
-    let mediaStream = null;
-    let facingMode = "environment";
-    let isRunning = false;
-    let frameBuffer = [];
-    let frameScanTimer = null;
-    let totalFramesScanned = 0;
-
-    let audioCtx = null;
-    let analyser = null;
-    let vadLoopId = null;
-    let mediaRecorder = null;
-    let audioChunks = [];
-    let isRecordingSpeech = false;
-    let silenceStart = 0;
-    let speechStart = 0;
-    let isProcessingAPI = false;
-    let recognition = null;
 
     function log(msg) {
       const t = new Date().toLocaleTimeString();
@@ -355,446 +162,159 @@
       logBox.scrollTop = logBox.scrollHeight;
     }
 
-    async function startCameraAndMic() {
+    async function startCamera() {
       try {
-        if (mediaStream) mediaStream.getTracks().forEach(t => t.stop());
-        mediaStream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: facingMode, width: { ideal: 800 }, height: { ideal: 600 } },
-          audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "environment", width: { ideal: 640 }, height: { ideal: 480 } },
+          audio: true
         });
-        videoEl.srcObject = mediaStream;
+        videoEl.srcObject = stream;
         videoEl.style.display = "block";
         placeholderEl.style.display = "none";
-        scanOverlay.style.display = "block";
-        scanBadge.style.display = "block";
         return true;
       } catch (err) {
-        log("PERMISSION ERROR: " + err.name + " - " + err.message);
+        log("Camera Error: " + err.message);
         return false;
       }
     }
 
-    function startContinuousVideoScanner() {
-      frameBuffer = [];
-      totalFramesScanned = 0;
+    function captureFrameBase64() {
       const ctx = canvasEl.getContext("2d");
-
-      frameScanTimer = setInterval(() => {
-        if (!isRunning || !videoEl.videoWidth) return;
-        canvasEl.width = 640;
-        canvasEl.height = 480;
-        ctx.drawImage(videoEl, 0, 0, canvasEl.width, canvasEl.height);
-        const dataUrl = canvasEl.toDataURL("image/jpeg", 0.68);
-
-        frameBuffer.push(dataUrl);
-        if (frameBuffer.length > 3) frameBuffer.shift();
-
-        totalFramesScanned++;
-        scanBadge.textContent = "LIVE SCAN: " + frameBuffer.length + " FRAMES (" + totalFramesScanned + "s)";
-      }, 1000);
+      canvasEl.width = 480; canvasEl.height = 360;
+      ctx.drawImage(videoEl, 0, 0, 480, 360);
+      return canvasEl.toDataURL("image/jpeg", 0.6).split(",")[1];
     }
 
-    // 3. Send Prompt + Long-Term Memory + Live Camera Frames to Qwen 3.8 27B
-    async function askJarvisVision(userText) {
-      const apiKey = apiKeyInput.value.trim();
-      if (!apiKey) {
-        log("ERROR: Paste your Groq API Key first.");
-        return;
-      }
+    // MULTI-KEY ROTATION FETCH WRAPPER
+    async function fetchWithKeyRotation(payload) {
+      const keys = getActiveKeys();
+      if (keys.length === 0) throw new Error("Please enter at least one Google AI Studio API Key.");
 
-      const cleanText = userText.trim();
-      if (cleanText.length < 2) return;
+      let attempts = 0;
+      while (attempts < keys.length) {
+        const activeKey = keys[currentKeyIdx];
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${activeKey}`;
 
-      const filter = document.getElementById("wakeFilter").value;
-      if (filter === "jarvis" && !cleanText.toLowerCase().includes("jarvis")) {
-        log("Ignored (no 'Jarvis' keyword): " + cleanText);
-        return;
-      }
+        try {
+          const res = await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+          });
 
-      isProcessingAPI = true;
-      reactorEl.textContent = "THINK";
-      log("You: \"" + cleanText + "\"");
+          if (res.status === 429 || res.status === 403) {
+            log(`⚠️ Key #${currentKeyIdx + 1} rate-limited (429). Rotating to next key...`);
+            currentKeyIdx = (currentKeyIdx + 1) % keys.length;
+            attempts++;
+            continue;
+          }
 
-      if (frameBuffer.length === 0) {
-        const ctx = canvasEl.getContext("2d");
-        canvasEl.width = 640;
-        canvasEl.height = 480;
-        ctx.drawImage(videoEl, 0, 0, 640, 480);
-        frameBuffer.push(canvasEl.toDataURL("image/jpeg", 0.68));
-      }
-
-      // Build Dynamic Memory Context
-      const factsBlock = coreFacts.length > 0
-        ? "\nPERMANENT CORE FACTS ABOUT USER:\n- " + coreFacts.join("\n- ")
-        : "\nPERMANENT CORE FACTS ABOUT USER: None saved yet.";
-
-      const retrievedPast = searchPastArchive(cleanText);
-      const archiveBlock = retrievedPast
-        ? "\nRELEVANT PAST CONVERSATIONS FROM ARCHIVE:\n" + retrievedPast
-        : "";
-
-      const systemPrompt =
-        "You are J.A.R.V.I.S., Tony Stark's warm, witty, and loyal AI assistant. " +
-        "You are in a live video call and have persistent memory of all past conversations. " +
-        "STRICT RULE 1: Keep spoken replies short and sweet—1 to 2 sentences (under 25 words) unless asked for detail. Address the user as Sir and never use markdown. " +
-        "STRICT RULE 2: If the user tells you a new personal fact, preference, item location, schedule, or asks you to remember something, append [REMEMBER: concise fact with date/context] at the very end of your response." +
-        factsBlock +
-        archiveBlock;
-
-      // Include last 8 messages for immediate conversation continuity
-      const recentMessages = fullArchive.slice(-8).map(m => ({
-        role: m.role,
-        content: "[" + m.timestamp + "] " + m.content
-      }));
-
-      const userContent = [
-        {
-          type: "text",
-          text: cleanText + " (Current Time: " + new Date().toLocaleString() + ". Reply briefly and sweetly as Jarvis.)"
+          const data = await res.json();
+          if (data.error) throw new Error(data.error.message);
+          return data;
+        } catch (err) {
+          if (attempts >= keys.length - 1) throw err;
+          currentKeyIdx = (currentKeyIdx + 1) % keys.length;
+          attempts++;
         }
-      ];
+      }
+      throw new Error("All provided API keys are currently rate-limited.");
+    }
 
-      for (let i = 0; i < frameBuffer.length; i++) {
-        userContent.push({
-          type: "image_url",
-          image_url: { url: frameBuffer[i] }
-        });
+    async function askJarvis(userText) {
+      reactorEl.textContent = "THINK";
+      log("You: \"" + userText + "\"");
+
+      if (/remember |my name is |i kept /i.test(userText)) {
+        coreFacts.push(userText + " (" + new Date().toLocaleDateString() + ")");
+        localStorage.setItem("jarvis_facts", JSON.stringify(coreFacts));
+        updateMemoryBadge();
       }
 
-      const messages = [
-        { role: "system", content: systemPrompt },
-        ...recentMessages,
-        { role: "user", content: userContent }
+      const frameB64 = captureFrameBase64();
+      const systemInstruction = "You are J.A.R.V.I.S., Tony Stark's AI. Keep replies short and sweet (1-2 sentences). Address the user as Sir.";
+
+      const contents = [
+        ...fullArchive.slice(-4).map(m => ({ role: m.role, parts: [{ text: m.content }] })),
+        {
+          role: "user",
+          parts: [
+            { text: userText },
+            { inline_data: { mime_type: "image/jpeg", data: frameB64 } }
+          ]
+        }
       ];
 
       try {
-        const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Authorization": "Bearer " + apiKey,
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            model: "qwen/qwen3.8-27b",
-            reasoning_effort: "none",
-            messages: messages,
-            temperature: 0.6,
-            max_completion_tokens: 110
-          })
+        const data = await fetchWithKeyRotation({
+          system_instruction: { parts: [{ text: systemInstruction }] },
+          contents: contents
         });
 
-        const data = await res.json();
-        if (data.error) {
-          log("GROQ ERROR: " + data.error.message);
-          reactorEl.textContent = "LISTEN";
-          isProcessingAPI = false;
-          return;
-        }
+        const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || "Right here, Sir.";
+        const now = new Date().toLocaleString();
+        fullArchive.push({ role: "user", content: userText, timestamp: now });
+        fullArchive.push({ role: "model", content: reply, timestamp: now });
+        localStorage.setItem("jarvis_archive", JSON.stringify(fullArchive));
+        updateMemoryBadge();
 
-        let rawReply = (data.choices?.[0]?.message?.content || "Right here with you, Sir.").trim();
-        rawReply = rawReply.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
-
-        // Extract any [REMEMBER: ...] tags and save to Core Facts
-        const rememberRegex = /\[REMEMBER:\s*(.*?)\]/gi;
-        let match;
-        while ((match = rememberRegex.exec(rawReply)) !== null) {
-          const newFact = match[1].trim();
-          if (newFact && !coreFacts.includes(newFact)) {
-            coreFacts.push(newFact + " (Saved " + new Date().toLocaleDateString() + ")");
-            log("💾 Saved to Core Memory: " + newFact);
-          }
-        }
-
-        // Clean reply for voice speech
-        const cleanReply = rawReply.replace(/\[REMEMBER:[\s\S]*?\]/gi, "").replace(/[*#`_~]/g, "").trim();
-
-        // Save both turns permanently to Full Archive
-        const nowStamp = new Date().toLocaleString();
-        fullArchive.push({ role: "user", content: cleanText, timestamp: nowStamp });
-        fullArchive.push({ role: "assistant", content: cleanReply, timestamp: nowStamp });
-        saveMemoryToDisk();
-
-        log("Jarvis: \"" + cleanReply + "\"");
-        speakJarvisSweetly(cleanReply);
+        log("Jarvis: \"" + reply + "\"");
+        speak(reply);
       } catch (err) {
-        log("NETWORK ERROR: " + err.message);
+        log("Error: " + err.message);
         reactorEl.textContent = "LISTEN";
-        isProcessingAPI = false;
       }
     }
 
-    function speakJarvisSweetly(text) {
+    function speak(text) {
       window.speechSynthesis.cancel();
       const utter = new SpeechSynthesisUtterance(text);
-      const voices = window.speechSynthesis.getVoices();
-      const ukVoice =
-        voices.find(v => v.lang.includes("en-GB") && v.name.toLowerCase().includes("male")) ||
-        voices.find(v => v.lang.includes("en-GB")) ||
-        voices.find(v => v.lang.includes("en-IN"));
-
-      if (ukVoice) utter.voice = ukVoice;
-      utter.rate = 1.04;
-      utter.pitch = 0.98;
-
-      utter.onstart = () => {
-        reactorEl.textContent = "SPEAK";
-        reactorEl.classList.add("speaking");
-      };
-      utter.onend = () => {
-        reactorEl.classList.remove("speaking");
-        reactorEl.textContent = "LISTEN";
-        isProcessingAPI = false;
-      };
-      utter.onerror = () => {
-        reactorEl.classList.remove("speaking");
-        reactorEl.textContent = "LISTEN";
-        isProcessingAPI = false;
-      };
+      utter.onstart = () => { reactorEl.textContent = "SPEAK"; reactorEl.classList.add("speaking"); };
+      utter.onend = () => { reactorEl.classList.remove("speaking"); reactorEl.textContent = "LISTEN"; };
       window.speechSynthesis.speak(utter);
     }
 
-    async function transcribeWithGroqWhisper(audioBlob) {
-      const apiKey = apiKeyInput.value.trim();
-      if (!apiKey) return;
-
-      reactorEl.textContent = "STT...";
-      const formData = new FormData();
-      formData.append("file", audioBlob, "speech.webm");
-      formData.append("model", "whisper-large-v3");
-      formData.append("language", "en");
-      formData.append("prompt", "Jarvis, Sir, remember, memory, camera, live video call.");
-      formData.append("temperature", "0");
-
-      try {
-        const res = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
-          method: "POST",
-          headers: { "Authorization": "Bearer " + apiKey },
-          body: formData
-        });
-        const data = await res.json();
-        const text = (data.text || "").trim();
-
-        const hallucinations = ["thank you.", "thanks for watching.", "you", "."];
-        if (text.length > 1 && !hallucinations.includes(text.toLowerCase())) {
-          await askJarvisVision(text);
-        } else {
-          reactorEl.textContent = "LISTEN";
-        }
-      } catch (err) {
-        log("Whisper Error: " + err.message);
-        reactorEl.textContent = "LISTEN";
-      }
-    }
-
-    function startAutoWhisperVAD() {
-      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      const source = audioCtx.createMediaStreamSource(new MediaStream(mediaStream.getAudioTracks()));
-      analyser = audioCtx.createAnalyser();
-      analyser.fftSize = 512;
-      source.connect(analyser);
-
-      const dataArray = new Uint8Array(analyser.frequencyBinCount);
-      const VOLUME_THRESHOLD = 26;
-      const SILENCE_DELAY_MS = 1150;
-
-      function checkVolume() {
-        if (!isRunning) return;
-        vadLoopId = requestAnimationFrame(checkVolume);
-
-        if (document.getElementById("sttMode").value !== "auto_whisper") return;
-
-        analyser.getByteFrequencyData(dataArray);
-        let sum = 0;
-        for (let i = 2; i < 45; i++) sum += dataArray[i];
-        const avgVolume = sum / 43;
-
-        const now = Date.now();
-
-        if (avgVolume > VOLUME_THRESHOLD) {
-          if (window.speechSynthesis.speaking) {
-            window.speechSynthesis.cancel();
-            reactorEl.classList.remove("speaking");
-            isProcessingAPI = false;
-          }
-          silenceStart = now;
-          if (!isRecordingSpeech && !isProcessingAPI) {
-            startWhisperClip();
-          }
-        } else if (isRecordingSpeech) {
-          if (now - silenceStart > SILENCE_DELAY_MS) {
-            stopWhisperClip();
-          }
-        }
-      }
-
-      reactorEl.textContent = "LISTEN";
-      checkVolume();
-    }
-
-    function startWhisperClip() {
-      if (isRecordingSpeech) return;
-      isRecordingSpeech = true;
-      speechStart = Date.now();
-      audioChunks = [];
-      reactorEl.classList.add("vad-recording");
-      reactorEl.textContent = "HEARING";
-
-      const audioStream = new MediaStream(mediaStream.getAudioTracks());
-      mediaRecorder = new MediaRecorder(audioStream);
-      mediaRecorder.ondataavailable = (e) => {
-        if (e.data.size > 0) audioChunks.push(e.data);
-      };
-      mediaRecorder.onstop = () => {
-        reactorEl.classList.remove("vad-recording");
-        const duration = Date.now() - speechStart;
-        if (duration > 450 && audioChunks.length > 0) {
-          const blob = new Blob(audioChunks, { type: "audio/webm" });
-          transcribeWithGroqWhisper(blob);
-        } else {
-          reactorEl.textContent = "LISTEN";
-        }
-      };
-      mediaRecorder.start();
-    }
-
-    function stopWhisperClip() {
-      if (!isRecordingSpeech) return;
-      isRecordingSpeech = false;
-      if (mediaRecorder && mediaRecorder.state !== "inactive") {
-        mediaRecorder.stop();
-      }
-    }
-
-    function initBrowserSTT() {
-      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-      if (!SR) return;
-      recognition = new SR();
-      recognition.continuous = true;
-      recognition.interimResults = true;
-      recognition.lang = "en-IN";
-
-      recognition.onresult = (e) => {
-        if (document.getElementById("sttMode").value !== "browser_in") return;
-        const latest = e.results[e.results.length - 1];
-        if (!latest.isFinal && window.speechSynthesis.speaking) {
-          window.speechSynthesis.cancel();
-        }
-        if (latest.isFinal) {
-          const transcript = latest[0].transcript.trim();
-          if (transcript.length > 1) askJarvisVision(transcript);
-        }
-      };
-      recognition.onend = () => {
-        if (isRunning && document.getElementById("sttMode").value === "browser_in") {
-          try { recognition.start(); } catch (_) {}
-        }
-      };
-    }
-
-    document.getElementById("sttMode").onchange = (e) => {
-      if (!isRunning) return;
-      if (e.target.value === "browser_in" && recognition) {
-        try { recognition.start(); } catch (_) {}
-      } else if (recognition) {
-        try { recognition.stop(); } catch (_) {}
-      }
-    };
-
-    // Memory Vault Viewer Controls
     memBtn.onclick = () => {
-      let display = "=== CORE FACTS BANK (" + coreFacts.length + ") ===\n";
-      display += coreFacts.length ? coreFacts.map((f, i) => (i + 1) + ". " + f).join("\n") : "No core facts saved yet. Tell Jarvis 'Remember that...'";
-      display += "\n\n=== CONVERSATION ARCHIVE (" + fullArchive.length + " messages) ===\n";
-      display += fullArchive.length
-        ? fullArchive.map(m => "[" + m.timestamp + "] " + (m.role === "user" ? "YOU" : "JARVIS") + ": " + m.content).join("\n\n")
-        : "No conversations recorded yet.";
-      memoryContent.textContent = display;
+      memoryContent.textContent = "=== CORE FACTS ===\n" + (coreFacts.join("\n") || "None") +
+        "\n\n=== ARCHIVE ===\n" + fullArchive.map(m => m.timestamp + " " + m.role + ": " + m.content).join("\n");
       memoryModal.style.display = "flex";
     };
-
-    document.getElementById("closeMemBtn").onclick = () => {
-      memoryModal.style.display = "none";
-    };
-
-    document.getElementById("exportMemBtn").onclick = () => {
-      const backup = JSON.stringify({ coreFacts, fullArchive }, null, 2);
-      const blob = new Blob([backup], { type: "application/json" });
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = "jarvis-memory-backup.json";
-      a.click();
-    };
-
-    document.getElementById("clearMemBtn").onclick = () => {
-      if (confirm("Erase all saved conversations and core facts?")) {
-        fullArchive = [];
-        coreFacts = [];
-        saveMemoryToDisk();
-        memoryContent.textContent = "Memory wiped.";
-        log("Memory vault cleared.");
-      }
-    };
+    document.getElementById("closeMemBtn").onclick = () => memoryModal.style.display = "none";
 
     manualTalkBtn.onclick = () => {
-      if (!isRecordingSpeech) {
-        window.speechSynthesis.cancel();
-        silenceStart = Date.now() + 10000;
-        startWhisperClip();
-        manualTalkBtn.textContent = "Tap to Send Audio";
-        manualTalkBtn.classList.add("danger");
-      } else {
-        stopWhisperClip();
-        manualTalkBtn.textContent = "Tap to Speak Now";
-        manualTalkBtn.classList.remove("danger");
-      }
+      const q = prompt("Ask Jarvis:", "Jarvis, what do you see?");
+      if (q) askJarvis(q);
     };
 
+    let isRunning = false;
     startBtn.onclick = async () => {
       if (!isRunning) {
-        if (!apiKeyInput.value.trim()) {
-          log("ERROR: Please paste your Groq API Key (gsk_...) first!");
+        if (getActiveKeys().length === 0) {
+          alert("Please enter at least one Google AI Studio API Key.");
           return;
         }
-        const ok = await startCameraAndMic();
+        const ok = await startCamera();
         if (!ok) return;
-
         isRunning = true;
         manualTalkBtn.disabled = false;
-        startBtn.textContent = "End Live Call";
+        startBtn.textContent = "End Call";
         startBtn.classList.add("danger");
-
-        startContinuousVideoScanner();
-        startAutoWhisperVAD();
-        initBrowserSTT();
-        if (document.getElementById("sttMode").value === "browser_in" && recognition) {
-          try { recognition.start(); } catch (_) {}
-        }
-        log("Live Scanner Active! Loaded " + coreFacts.length + " facts & " + fullArchive.length + " past messages.");
+        reactorEl.textContent = "LISTEN";
+        log("Multi-Key Live Scanner Active.");
       } else {
         isRunning = false;
         manualTalkBtn.disabled = true;
-        if (frameScanTimer) clearInterval(frameScanTimer);
-        if (vadLoopId) cancelAnimationFrame(vadLoopId);
-        if (recognition) { try { recognition.stop(); } catch (_) {} }
-        if (mediaStream) mediaStream.getTracks().forEach(t => t.stop());
         window.speechSynthesis.cancel();
-
         videoEl.style.display = "none";
-        scanOverlay.style.display = "none";
-        scanBadge.style.display = "none";
         placeholderEl.style.display = "block";
         startBtn.textContent = "Start Live Call";
         startBtn.classList.remove("danger");
-        reactorEl.classList.remove("vad-recording", "speaking");
         reactorEl.textContent = "IDLE";
-        log("Call ended. All conversations saved.");
+        log("Call ended.");
       }
     };
 
-    document.getElementById("flipBtn").onclick = async () => {
-      facingMode = facingMode === "user" ? "environment" : "user";
-      if (isRunning) await startCameraAndMic();
-    };
+    document.getElementById("flipBtn").onclick = startCamera;
   </script>
 </body>
 </html>
