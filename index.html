@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>J.A.R.V.I.S. Live Vision</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #040811;
+      color: #e2f1ff;
+      font-family: system-ui, -apple-system, sans-serif;
+      display: flex;
+      flex-direction: column;
+      height: 100dvh;
+      width: 100vw;
+      overflow: hidden;
+    }
+    header {
+      padding: 10px 14px;
+      background: #091222;
+      border-bottom: 1px solid #1b3252;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    header h1 {
+      font-size: 15px;
+      letter-spacing: 1.5px;
+      color: #00f0ff;
+    }
+    .header-btns { display: flex; gap: 6px; }
+    .small-btn {
+      background: #13243a;
+      color: #00f0ff;
+      border: 1px solid #00f0ff;
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    /* Camera Viewport */
+    #viewport {
+      position: relative;
+      flex: 1;
+      background: radial-gradient(circle at center, #0d1b30 0%, #03070e 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+    video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: none;
+    }
+    #placeholder {
+      text-align: center;
+      color: #7a9ec7;
+      padding: 24px;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    /* Sci-Fi Scanning Reticle */
+    #scanOverlay {
+      position: absolute;
+      inset: 16px;
+      border: 1px dashed rgba(0, 240, 255, 0.35);
+      border-radius: 12px;
+      pointer-events: none;
+      display: none;
+    }
+    #scanBadge {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      background: rgba(4, 8, 17, 0.75);
+      border: 1px solid #00f0ff;
+      color: #00f0ff;
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-family: monospace;
+      display: none;
+    }
+    /* Voice Volume Meter & Arc Reactor */
+    #reactor {
+      position: absolute;
+      bottom: 14px;
+      right: 14px;
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background: radial-gradient(circle, #00f0ff 0%, #0044ff 65%, transparent 100%);
+      border: 2px solid #00f0ff;
+      box-shadow: 0 0 16px #00f0ff;
+      transition: transform 0.1s ease, border-color 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      font-weight: bold;
+      color: #fff;
+    }
+    .vad-recording {
+      border-color: #00ff9d !important;
+      box-shadow: 0 0 28px #00ff9d !important;
+      background: radial-gradient(circle, #00ff9d 0%, #006644 65%, transparent 100%) !important;
+    }
+    .speaking { animation: pulseSpeak 0.35s infinite alternate; }
+    @keyframes pulseSpeak {
+      from { transform: scale(1); }
+      to { transform: scale(1.3); }
+    }
+    /* Bottom Controls */
+    #controls {
+      background: #091222;
+      border-top: 2px solid #00f0ff;
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    input, select {
+      width: 100%;
+      background: #040811;
+      color: #ffffff;
+      border: 1px solid #233e63;
+      padding: 9px 10px;
+      border-radius: 7px;
+      font-size: 13px;
+    }
+    button.main-btn {
+      padding: 12px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 700;
+      border: none;
+      cursor: pointer;
+      background: #00f0ff;
+      color: #040811;
+    }
+    button.talk-btn {
+      padding: 12px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 700;
+      border: 1px solid #00f0ff;
+      cursor: pointer;
+      background: #13243a;
+      color: #e2f1ff;
+    }
+    button:disabled { opacity: 0.45; }
+    .danger { background: #ff3b5c !important; color: #ffffff !important; border: none !important; }
+    #logBox {
+      height: 80px;
+      background: #02050a;
+      border: 1px solid #1b3252;
+      border-radius: 6px;
+      padding: 7px;
+      font-family: monospace;
+      font-size: 11px;
+      color: #00ff9d;
+      overflow-y: auto;
+      white-space: pre-wrap;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>J.A.R.V.I.S. LIVE SCANNER</h1>
+    <div class="header-btns">
+      <button id="flipBtn" class="small-btn">Flip Cam</button>
+    </div>
+  </header>
+
+  <div id="viewport">
+    <div id="placeholder">
+      <b>J.A.R.V.I.S. Multimodal Live</b><br><br>
+      • Continuous 1 FPS Multi-Frame Video Scan<br>
+      • Hands-Free Groq Whisper-Large-v3 Voice<br>
+      • Short & Sweet Jarvis Replies
+    </div>
+    <video id="camera" autoplay playsinline muted></video>
+    <div id="scanOverlay"></div>
+    <div id="scanBadge">LIVE SCAN: 0 FRAMES</div>
+    <div id="reactor">IDLE</div>
+    <canvas id="snapCanvas" style="display:none;"></canvas>
+  </div>
+
+  <div id="controls">
+    <input type="password" id="apiKey" placeholder="Paste Groq API Key (gsk_...)" />
+    <div class="row">
+      <select id="sttMode">
+        <option value="auto_whisper">Mic: Auto Hands-Free Whisper (Best Accuracy)</option>
+        <option value="browser_in">Mic: Fast Browser STT (English-India)</option>
+      </select>
+      <select id="wakeFilter">
+        <option value="all">Reply to Everything</option>
+        <option value="jarvis">Require "Jarvis" Wake Word</option>
+      </select>
+    </div>
+    <div class="row">
+      <button id="startBtn" class="main-btn">Start Live Call</button>
+      <button id="manualTalkBtn" class="talk-btn" disabled>Tap to Speak Now</button>
+    </div>
+    <div id="logBox">Ready. Paste your Groq key and tap Start Live Call.</div>
+  </div>
+
+  <script>
+    const videoEl = document.getElementById("camera");
+    const placeholderEl = document.getElementById("placeholder");
+    const scanOverlay = document.getElementById("scanOverlay");
+    const scanBadge = document.getElementById("scanBadge");
+    const canvasEl = document.getElementById("snapCanvas");
+    const reactorEl = document.getElementById("reactor");
+    const logBox = document.getElementById("logBox");
+    const startBtn = document.getElementById("startBtn");
+    const manualTalkBtn = document.getElementById("manualTalkBtn");
+    const apiKeyInput = document.getElementById("apiKey");
+
+    apiKeyInput.value = localStorage.getItem("groq_key") || "";
+    apiKeyInput.addEventListener("input", () => {
+      localStorage.setItem("groq_key", apiKeyInput.value.trim());
+    });
+
+    let mediaStream = null;
+    let facingMode = "environment";
+    let isRunning = false;
+
+    // Continuous 1 FPS Video Frame Rolling Buffer (Holds last 3 crisp frames)
+    let frameBuffer = [];
+    let frameScanTimer = null;
+    let totalFramesScanned = 0;
+
+    // Audio & Auto-VAD Whisper state
+    let audioCtx = null;
+    let analyser = null;
+    let vadLoopId = null;
+    let mediaRecorder = null;
+    let audioChunks = [];
+    let isRecordingSpeech = false;
+    let silenceStart = 0;
+    let speechStart = 0;
+    let isProcessingAPI = false;
+
+    // Fallback Browser STT
+    let recognition = null;
+    let chatHistory = [];
+
+    // Short & Sweet Jarvis System Prompt
+    const SYSTEM_PROMPT =
+      "You are J.A.R.V.I.S., Tony Stark's warm, witty, and loyal AI assistant. " +
+      "You are in a real-time video call and are given a sequence of live camera frames showing what the user is looking at. " +
+      "STRICT RULE: Keep every answer short, sweet, and natural for spoken voice—maximum 1 to 2 short sentences (under 25 words) unless the user explicitly asks for a long explanation. " +
+      "Address the user warmly as Sir, never use markdown symbols or bullet points, and directly answer based on the camera frames.";
+
+    function log(msg) {
+      const t = new Date().toLocaleTimeString();
+      logBox.textContent += "\n[" + t + "] " + msg;
+      logBox.scrollTop = logBox.scrollHeight;
+    }
+
+    // 1. Start HD Camera with Continuous Autofocus + Clean Microphone
+    async function startCameraAndMic() {
+      try {
+        if (mediaStream) mediaStream.getTracks().forEach(t => t.stop());
+        mediaStream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: facingMode,
+            width: { ideal: 800 },
+            height: { ideal: 600 },
+            focusMode: "continuous"
+          },
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true
+          }
+        });
+        videoEl.srcObject = mediaStream;
+        videoEl.style.display = "block";
+        placeholderEl.style.display = "none";
+        scanOverlay.style.display = "block";
+        scanBadge.style.display = "block";
+        return true;
+      } catch (err) {
+        log("PERMISSION ERROR: " + err.name + " - " + err.message);
+        return false;
+      }
+    }
+
+    // 2. Continuous 1 FPS Video Scanner (Just like Gemini Live)
+    function startContinuousVideoScanner() {
+      frameBuffer = [];
+      totalFramesScanned = 0;
+      const ctx = canvasEl.getContext("2d");
+
+      frameScanTimer = setInterval(() => {
+        if (!isRunning || !videoEl.videoWidth) return;
+        // Capture high-clarity 720p-class frame
+        canvasEl.width = 768;
+        canvasEl.height = 576;
+        ctx.drawImage(videoEl, 0, 0, canvasEl.width, canvasEl.height);
+        const dataUrl = canvasEl.toDataURL("image/jpeg", 0.72);
+
+        frameBuffer.push(dataUrl);
+        // Keep the latest 3 frames (3 seconds of visual motion context)
+        if (frameBuffer.length > 3) frameBuffer.shift();
+
+        totalFramesScanned++;
+        scanBadge.textContent = "LIVE SCAN: " + frameBuffer.length + " FRAMES BUFFERED (" + totalFramesScanned + "s)";
+      }, 1000);
+    }
+
+    // 3. Send Spoken Text + Multi-Frame Video Stream to Llama 4 Scout
+    async function askJarvisVision(userText) {
+      const apiKey = apiKeyInput.value.trim();
+      if (!apiKey) {
+        log("ERROR: Paste your Groq API Key first.");
+        return;
+      }
+
+      const cleanText = userText.trim();
+      if (cleanText.length < 2) return;
+
+      const filter = document.getElementById("wakeFilter").value;
+      if (filter === "jarvis" && !cleanText.toLowerCase().includes("jarvis")) {
+        log("Ignored (no 'Jarvis' keyword): " + cleanText);
+        return;
+      }
+
+      isProcessingAPI = true;
+      reactorEl.textContent = "THINK";
+      log("You: \"" + cleanText + "\"");
+
+      // Grab the rolling multi-frame sequence (up to 3 sequential frames)
+      if (frameBuffer.length === 0) {
+        const ctx = canvasEl.getContext("2d");
+        canvasEl.width = 768;
+        canvasEl.height = 576;
+        ctx.drawImage(videoEl, 0, 0, 768, 576);
+        frameBuffer.push(canvasEl.toDataURL("image/jpeg", 0.72));
+      }
+
+      const userContent = [
+        {
+          type: "text",
+          text: cleanText + " (Note: Attached are the latest live camera frames in chronological order. Answer briefly and sweetly in 1-2 short sentences.)"
+        }
+      ];
+
+      for (let i = 0; i < frameBuffer.length; i++) {
+        userContent.push({
+          type: "image_url",
+          image_url: { url: frameBuffer[i] }
+        });
+      }
+
+      const messages = [
+        { role: "system", content: SYSTEM_PROMPT },
+        ...chatHistory.slice(-6),
+        { role: "user", content: userContent }
+      ];
+
+      try {
+        const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Authorization": "Bearer " + apiKey,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            model: "meta-llama/llama-4-scout-17b-16e-instruct",
+            messages: messages,
+            temperature: 0.5,
+            max_completion_tokens: 75
+          })
+        });
+
+        const data = await res.json();
+        if (data.error) {
+          log("GROQ ERROR: " + data.error.message);
+          isProcessingAPI = false;
+          return;
+        }
+
+        let reply = (data.choices?.[0]?.message?.content || "Right here with you, Sir.").trim();
+        reply = reply.replace(/[*#`_~]/g, "");
+
+        chatHistory.push({ role: "user", content: cleanText });
+        chatHistory.push({ role: "assistant", content: reply });
+
+        log("Jarvis: \"" + reply + "\"");
+        speakJarvisSweetly(reply);
+      } catch (err) {
+        log("NETWORK ERROR: " + err.message);
+        isProcessingAPI = false;
+      }
+    }
+
+    // 4. Short & Sweet British Voice Output
+    function speakJarvisSweetly(text) {
+      window.speechSynthesis.cancel();
+      const utter = new SpeechSynthesisUtterance(text);
+      const voices = window.speechSynthesis.getVoices();
+      const ukVoice =
+        voices.find(v => v.lang.includes("en-GB") && v.name.toLowerCase().includes("male")) ||
+        voices.find(v => v.lang.includes("en-GB")) ||
+        voices.find(v => v.lang.includes("en-IN"));
+
+      if (ukVoice) utter.voice = ukVoice;
+      utter.rate = 1.04;
+      utter.pitch = 0.98;
+
+      utter.onstart = () => {
+        reactorEl.textContent = "SPEAK";
+        reactorEl.classList.add("speaking");
+      };
+      utter.onend = () => {
+        reactorEl.classList.remove("speaking");
+        reactorEl.textContent = "LISTEN";
+        isProcessingAPI = false;
+      };
+      utter.onerror = () => {
+        reactorEl.classList.remove("speaking");
+        isProcessingAPI = false;
+      };
+      window.speechSynthesis.speak(utter);
+    }
+
+    // 5. High-Accuracy Groq Whisper-Large-v3 Transcription
+    async function transcribeWithGroqWhisper(audioBlob) {
+      const apiKey = apiKeyInput.value.trim();
+      if (!apiKey) return;
+
+      reactorEl.textContent = "STT...";
+      const formData = new FormData();
+      formData.append("file", audioBlob, "speech.webm");
+      formData.append("model", "whisper-large-v3");
+      formData.append("language", "en");
+      formData.append("prompt", "Jarvis, Sir, camera, live video call, technical assistant.");
+      formData.append("temperature", "0");
+
+      try {
+        const res = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
+          method: "POST",
+          headers: { "Authorization": "Bearer " + apiKey },
+          body: formData
+        });
+        const data = await res.json();
+        const text = (data.text || "").trim();
+
+        // Filter out common Whisper silence hallucinations
+        const hallucinations = ["thank you.", "thanks for watching.", "you", "."];
+        if (text.length > 1 && !hallucinations.includes(text.toLowerCase())) {
+          await askJarvisVision(text);
+        } else {
+          reactorEl.textContent = "LISTEN";
+        }
+      } catch (err) {
+        log("Whisper Error: " + err.message);
+        reactorEl.textContent = "LISTEN";
+      }
+    }
+
+    // 6. Hands-Free Voice Activity Detection (Auto-Starts & Stops Whisper Recording)
+    function startAutoWhisperVAD() {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const source = audioCtx.createMediaStreamSource(new MediaStream(mediaStream.getAudioTracks()));
+      analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 512;
+      source.connect(analyser);
+
+      const dataArray = new Uint8Array(analyser.frequencyBinCount);
+      const VOLUME_THRESHOLD = 26; // Sensitivity for human speech
+      const SILENCE_DELAY_MS = 1150; // Send audio after 1.15s of pause
+
+      function checkVolume() {
+        if (!isRunning) return;
+        vadLoopId = requestAnimationFrame(checkVolume);
+
+        if (document.getElementById("sttMode").value !== "auto_whisper") return;
+
+        analyser.getByteFrequencyData(dataArray);
+        let sum = 0;
+        for (let i = 2; i < 45; i++) sum += dataArray[i];
+        const avgVolume = sum / 43;
+
+        const now = Date.now();
+
+        if (avgVolume > VOLUME_THRESHOLD) {
+          // Barge-in: Stop Jarvis talking if user starts speaking
+          if (window.speechSynthesis.speaking) {
+            window.speechSynthesis.cancel();
+            reactorEl.classList.remove("speaking");
+            isProcessingAPI = false;
+          }
+
+          silenceStart = now;
+          if (!isRecordingSpeech && !isProcessingAPI) {
+            startWhisperClip();
+          }
+        } else if (isRecordingSpeech) {
+          if (now - silenceStart > SILENCE_DELAY_MS) {
+            stopWhisperClip();
+          }
+        }
+      }
+
+      reactorEl.textContent = "LISTEN";
+      checkVolume();
+    }
+
+    function startWhisperClip() {
+      if (isRecordingSpeech) return;
+      isRecordingSpeech = true;
+      speechStart = Date.now();
+      audioChunks = [];
+      reactorEl.classList.add("vad-recording");
+      reactorEl.textContent = "HEARING";
+
+      const audioStream = new MediaStream(mediaStream.getAudioTracks());
+      mediaRecorder = new MediaRecorder(audioStream);
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) audioChunks.push(e.data);
+      };
+      mediaRecorder.onstop = () => {
+        reactorEl.classList.remove("vad-recording");
+        const duration = Date.now() - speechStart;
+        if (duration > 450 && audioChunks.length > 0) {
+          const blob = new Blob(audioChunks, { type: "audio/webm" });
+          transcribeWithGroqWhisper(blob);
+        } else {
+          reactorEl.textContent = "LISTEN";
+        }
+      };
+      mediaRecorder.start();
+    }
+
+    function stopWhisperClip() {
+      if (!isRecordingSpeech) return;
+      isRecordingSpeech = false;
+      if (mediaRecorder && mediaRecorder.state !== "inactive") {
+        mediaRecorder.stop();
+      }
+    }
+
+    // 7. Optional Indian-English Browser STT Mode
+    function initBrowserSTT() {
+      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SR) return;
+      recognition = new SR();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = "en-IN"; // Tuned for Indian English accent accuracy
+
+      recognition.onresult = (e) => {
+        if (document.getElementById("sttMode").value !== "browser_in") return;
+        const latest = e.results[e.results.length - 1];
+        if (!latest.isFinal && window.speechSynthesis.speaking) {
+          window.speechSynthesis.cancel();
+        }
+        if (latest.isFinal) {
+          const transcript = latest[0].transcript.trim();
+          if (transcript.length > 1) askJarvisVision(transcript);
+        }
+      };
+      recognition.onend = () => {
+        if (isRunning && document.getElementById("sttMode").value === "browser_in") {
+          try { recognition.start(); } catch (_) {}
+        }
+      };
+    }
+
+    // Manual Tap-to-Speak Override Button
+    manualTalkBtn.onclick = () => {
+      if (!isRecordingSpeech) {
+        window.speechSynthesis.cancel();
+        silenceStart = Date.now() + 10000; // Hold open until tapped again
+        startWhisperClip();
+        manualTalkBtn.textContent = "Tap to Send Audio";
+        manualTalkBtn.classList.add("danger");
+      } else {
+        stopWhisperClip();
+        manualTalkBtn.textContent = "Tap to Speak Now";
+        manualTalkBtn.classList.remove("danger");
+      }
+    };
+
+    startBtn.onclick = async () => {
+      if (!isRunning) {
+        if (!apiKeyInput.value.trim()) {
+          log("ERROR: Please paste your Groq API Key (gsk_...) first!");
+          return;
+        }
+        const ok = await startCameraAndMic();
+        if (!ok) return;
+
+        isRunning = true;
+        manualTalkBtn.disabled = false;
+        startBtn.textContent = "End Live Call";
+        startBtn.classList.add("danger");
+
+        startContinuousVideoScanner();
+        startAutoWhisperVAD();
+        initBrowserSTT();
+        log("Live Scanner Active! Just speak naturally—Jarvis is watching and listening.");
+      } else {
+        isRunning = false;
+        manualTalkBtn.disabled = true;
+        if (frameScanTimer) clearInterval(frameScanTimer);
+        if (vadLoopId) cancelAnimationFrame(vadLoopId);
+        if (recognition) { try { recognition.stop(); } catch (_) {} }
+        if (mediaStream) mediaStream.getTracks().forEach(t => t.stop());
+        window.speechSynthesis.cancel();
+
+        videoEl.style.display = "none";
+        scanOverlay.style.display = "none";
+        scanBadge.style.display = "none";
+        placeholderEl.style.display = "block";
+        startBtn.textContent = "Start Live Call";
+        startBtn.classList.remove("danger");
+        reactorEl.classList.remove("vad-recording", "speaking");
+        reactorEl.textContent = "IDLE";
+        log("Call ended.");
+      }
+    };
+
+    document.getElementById("flipBtn").onclick = async () => {
+      facingMode = facingMode === "user" ? "environment" : "user";
+      if (isRunning) await startCameraAndMic();
+    };
+  </script>
+</body>
+</html>
