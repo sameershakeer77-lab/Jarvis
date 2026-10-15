@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>J.A.R.V.I.S. Live Vision</title>
+  <title>J.A.R.V.I.S. Live Scanner</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -29,7 +29,6 @@
       letter-spacing: 1.5px;
       color: #00f0ff;
     }
-    .header-btns { display: flex; gap: 6px; }
     .small-btn {
       background: #13243a;
       color: #00f0ff;
@@ -40,7 +39,6 @@
       font-weight: 600;
       cursor: pointer;
     }
-    /* Camera Viewport */
     #viewport {
       position: relative;
       flex: 1;
@@ -63,7 +61,6 @@
       font-size: 14px;
       line-height: 1.5;
     }
-    /* Sci-Fi Scanning Reticle */
     #scanOverlay {
       position: absolute;
       inset: 16px;
@@ -85,7 +82,6 @@
       font-family: monospace;
       display: none;
     }
-    /* Voice Volume Meter & Arc Reactor */
     #reactor {
       position: absolute;
       bottom: 14px;
@@ -114,7 +110,6 @@
       from { transform: scale(1); }
       to { transform: scale(1.3); }
     }
-    /* Bottom Controls */
     #controls {
       background: #091222;
       border-top: 2px solid #00f0ff;
@@ -177,17 +172,15 @@
 
   <header>
     <h1>J.A.R.V.I.S. LIVE SCANNER</h1>
-    <div class="header-btns">
-      <button id="flipBtn" class="small-btn">Flip Cam</button>
-    </div>
+    <button id="flipBtn" class="small-btn">Flip Cam</button>
   </header>
 
   <div id="viewport">
     <div id="placeholder">
       <b>J.A.R.V.I.S. Multimodal Live</b><br><br>
-      • Continuous 1 FPS Multi-Frame Video Scan<br>
-      • Hands-Free Groq Whisper-Large-v3 Voice<br>
-      • Short & Sweet Jarvis Replies
+      • Powered by Groq Qwen 3.8 27B Vision<br>
+      • Continuous 3-Frame Camera Buffer<br>
+      • Short & Sweet Spoken Replies
     </div>
     <video id="camera" autoplay playsinline muted></video>
     <div id="scanOverlay"></div>
@@ -200,7 +193,7 @@
     <input type="password" id="apiKey" placeholder="Paste Groq API Key (gsk_...)" />
     <div class="row">
       <select id="sttMode">
-        <option value="auto_whisper">Mic: Auto Hands-Free Whisper (Best Accuracy)</option>
+        <option value="auto_whisper">Mic: Auto Hands-Free Whisper</option>
         <option value="browser_in">Mic: Fast Browser STT (English-India)</option>
       </select>
       <select id="wakeFilter">
@@ -236,12 +229,11 @@
     let facingMode = "environment";
     let isRunning = false;
 
-    // Continuous 1 FPS Video Frame Rolling Buffer (Holds last 3 crisp frames)
+    // Continuous 1 FPS Video Frame Rolling Buffer (Max 3 images supported by Qwen 3.8 27B)
     let frameBuffer = [];
     let frameScanTimer = null;
     let totalFramesScanned = 0;
 
-    // Audio & Auto-VAD Whisper state
     let audioCtx = null;
     let analyser = null;
     let vadLoopId = null;
@@ -252,16 +244,14 @@
     let speechStart = 0;
     let isProcessingAPI = false;
 
-    // Fallback Browser STT
     let recognition = null;
     let chatHistory = [];
 
-    // Short & Sweet Jarvis System Prompt
     const SYSTEM_PROMPT =
       "You are J.A.R.V.I.S., Tony Stark's warm, witty, and loyal AI assistant. " +
-      "You are in a real-time video call and are given a sequence of live camera frames showing what the user is looking at. " +
-      "STRICT RULE: Keep every answer short, sweet, and natural for spoken voice—maximum 1 to 2 short sentences (under 25 words) unless the user explicitly asks for a long explanation. " +
-      "Address the user warmly as Sir, never use markdown symbols or bullet points, and directly answer based on the camera frames.";
+      "You are in a real-time video call and can see through the user's camera frames. " +
+      "STRICT RULE: Keep every answer short, sweet, and natural for spoken voice—maximum 1 to 2 short sentences (under 25 words) unless asked for detail. " +
+      "Address the user warmly as Sir, never use markdown symbols, and directly describe or answer based on what you see.";
 
     function log(msg) {
       const t = new Date().toLocaleTimeString();
@@ -269,7 +259,6 @@
       logBox.scrollTop = logBox.scrollHeight;
     }
 
-    // 1. Start HD Camera with Continuous Autofocus + Clean Microphone
     async function startCameraAndMic() {
       try {
         if (mediaStream) mediaStream.getTracks().forEach(t => t.stop());
@@ -277,8 +266,7 @@
           video: {
             facingMode: facingMode,
             width: { ideal: 800 },
-            height: { ideal: 600 },
-            focusMode: "continuous"
+            height: { ideal: 600 }
           },
           audio: {
             echoCancellation: true,
@@ -298,7 +286,6 @@
       }
     }
 
-    // 2. Continuous 1 FPS Video Scanner (Just like Gemini Live)
     function startContinuousVideoScanner() {
       frameBuffer = [];
       totalFramesScanned = 0;
@@ -306,14 +293,13 @@
 
       frameScanTimer = setInterval(() => {
         if (!isRunning || !videoEl.videoWidth) return;
-        // Capture high-clarity 720p-class frame
-        canvasEl.width = 768;
-        canvasEl.height = 576;
+        canvasEl.width = 640;
+        canvasEl.height = 480;
         ctx.drawImage(videoEl, 0, 0, canvasEl.width, canvasEl.height);
-        const dataUrl = canvasEl.toDataURL("image/jpeg", 0.72);
+        const dataUrl = canvasEl.toDataURL("image/jpeg", 0.68);
 
         frameBuffer.push(dataUrl);
-        // Keep the latest 3 frames (3 seconds of visual motion context)
+        // Qwen 3.8 27B supports up to 3 images per request
         if (frameBuffer.length > 3) frameBuffer.shift();
 
         totalFramesScanned++;
@@ -321,7 +307,6 @@
       }, 1000);
     }
 
-    // 3. Send Spoken Text + Multi-Frame Video Stream to Llama 4 Scout
     async function askJarvisVision(userText) {
       const apiKey = apiKeyInput.value.trim();
       if (!apiKey) {
@@ -342,19 +327,18 @@
       reactorEl.textContent = "THINK";
       log("You: \"" + cleanText + "\"");
 
-      // Grab the rolling multi-frame sequence (up to 3 sequential frames)
       if (frameBuffer.length === 0) {
         const ctx = canvasEl.getContext("2d");
-        canvasEl.width = 768;
-        canvasEl.height = 576;
-        ctx.drawImage(videoEl, 0, 0, 768, 576);
-        frameBuffer.push(canvasEl.toDataURL("image/jpeg", 0.72));
+        canvasEl.width = 640;
+        canvasEl.height = 480;
+        ctx.drawImage(videoEl, 0, 0, 640, 480);
+        frameBuffer.push(canvasEl.toDataURL("image/jpeg", 0.68));
       }
 
       const userContent = [
         {
           type: "text",
-          text: cleanText + " (Note: Attached are the latest live camera frames in chronological order. Answer briefly and sweetly in 1-2 short sentences.)"
+          text: cleanText + " (Reply briefly and sweetly as Jarvis in 1-2 short spoken sentences based on these live camera frames.)"
         }
       ];
 
@@ -367,7 +351,7 @@
 
       const messages = [
         { role: "system", content: SYSTEM_PROMPT },
-        ...chatHistory.slice(-6),
+        ...chatHistory.slice(-4),
         { role: "user", content: userContent }
       ];
 
@@ -379,22 +363,24 @@
             "Content-Type": "application/json"
           },
           body: JSON.stringify({
-            model: "meta-llama/llama-4-scout-17b-16e-instruct",
+            model: "qwen/qwen3.8-27b",
+            reasoning_effort: "none",
             messages: messages,
-            temperature: 0.5,
-            max_completion_tokens: 75
+            temperature: 0.6,
+            max_completion_tokens: 90
           })
         });
 
         const data = await res.json();
         if (data.error) {
           log("GROQ ERROR: " + data.error.message);
+          reactorEl.textContent = "LISTEN";
           isProcessingAPI = false;
           return;
         }
 
         let reply = (data.choices?.[0]?.message?.content || "Right here with you, Sir.").trim();
-        reply = reply.replace(/[*#`_~]/g, "");
+        reply = reply.replace(/<think>[\s\S]*?<\/think>/gi, "").replace(/[*#`_~]/g, "").trim();
 
         chatHistory.push({ role: "user", content: cleanText });
         chatHistory.push({ role: "assistant", content: reply });
@@ -403,11 +389,11 @@
         speakJarvisSweetly(reply);
       } catch (err) {
         log("NETWORK ERROR: " + err.message);
+        reactorEl.textContent = "LISTEN";
         isProcessingAPI = false;
       }
     }
 
-    // 4. Short & Sweet British Voice Output
     function speakJarvisSweetly(text) {
       window.speechSynthesis.cancel();
       const utter = new SpeechSynthesisUtterance(text);
@@ -432,12 +418,12 @@
       };
       utter.onerror = () => {
         reactorEl.classList.remove("speaking");
+        reactorEl.textContent = "LISTEN";
         isProcessingAPI = false;
       };
       window.speechSynthesis.speak(utter);
     }
 
-    // 5. High-Accuracy Groq Whisper-Large-v3 Transcription
     async function transcribeWithGroqWhisper(audioBlob) {
       const apiKey = apiKeyInput.value.trim();
       if (!apiKey) return;
@@ -447,7 +433,7 @@
       formData.append("file", audioBlob, "speech.webm");
       formData.append("model", "whisper-large-v3");
       formData.append("language", "en");
-      formData.append("prompt", "Jarvis, Sir, camera, live video call, technical assistant.");
+      formData.append("prompt", "Jarvis, Sir, camera, live video call.");
       formData.append("temperature", "0");
 
       try {
@@ -459,7 +445,6 @@
         const data = await res.json();
         const text = (data.text || "").trim();
 
-        // Filter out common Whisper silence hallucinations
         const hallucinations = ["thank you.", "thanks for watching.", "you", "."];
         if (text.length > 1 && !hallucinations.includes(text.toLowerCase())) {
           await askJarvisVision(text);
@@ -472,7 +457,6 @@
       }
     }
 
-    // 6. Hands-Free Voice Activity Detection (Auto-Starts & Stops Whisper Recording)
     function startAutoWhisperVAD() {
       audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       const source = audioCtx.createMediaStreamSource(new MediaStream(mediaStream.getAudioTracks()));
@@ -481,8 +465,8 @@
       source.connect(analyser);
 
       const dataArray = new Uint8Array(analyser.frequencyBinCount);
-      const VOLUME_THRESHOLD = 26; // Sensitivity for human speech
-      const SILENCE_DELAY_MS = 1150; // Send audio after 1.15s of pause
+      const VOLUME_THRESHOLD = 26;
+      const SILENCE_DELAY_MS = 1150;
 
       function checkVolume() {
         if (!isRunning) return;
@@ -498,13 +482,11 @@
         const now = Date.now();
 
         if (avgVolume > VOLUME_THRESHOLD) {
-          // Barge-in: Stop Jarvis talking if user starts speaking
           if (window.speechSynthesis.speaking) {
             window.speechSynthesis.cancel();
             reactorEl.classList.remove("speaking");
             isProcessingAPI = false;
           }
-
           silenceStart = now;
           if (!isRecordingSpeech && !isProcessingAPI) {
             startWhisperClip();
@@ -554,14 +536,13 @@
       }
     }
 
-    // 7. Optional Indian-English Browser STT Mode
     function initBrowserSTT() {
       const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (!SR) return;
       recognition = new SR();
       recognition.continuous = true;
       recognition.interimResults = true;
-      recognition.lang = "en-IN"; // Tuned for Indian English accent accuracy
+      recognition.lang = "en-IN";
 
       recognition.onresult = (e) => {
         if (document.getElementById("sttMode").value !== "browser_in") return;
@@ -581,11 +562,19 @@
       };
     }
 
-    // Manual Tap-to-Speak Override Button
+    document.getElementById("sttMode").onchange = (e) => {
+      if (!isRunning) return;
+      if (e.target.value === "browser_in" && recognition) {
+        try { recognition.start(); } catch (_) {}
+      } else if (recognition) {
+        try { recognition.stop(); } catch (_) {}
+      }
+    };
+
     manualTalkBtn.onclick = () => {
       if (!isRecordingSpeech) {
         window.speechSynthesis.cancel();
-        silenceStart = Date.now() + 10000; // Hold open until tapped again
+        silenceStart = Date.now() + 10000;
         startWhisperClip();
         manualTalkBtn.textContent = "Tap to Send Audio";
         manualTalkBtn.classList.add("danger");
@@ -613,7 +602,10 @@
         startContinuousVideoScanner();
         startAutoWhisperVAD();
         initBrowserSTT();
-        log("Live Scanner Active! Just speak naturally—Jarvis is watching and listening.");
+        if (document.getElementById("sttMode").value === "browser_in" && recognition) {
+          try { recognition.start(); } catch (_) {}
+        }
+        log("Live Scanner Active! Qwen 3.8 27B Vision connected.");
       } else {
         isRunning = false;
         manualTalkBtn.disabled = true;
