@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>J.A.R.V.I.S. Live Scanner</title>
+  <title>J.A.R.V.I.S. Live + Memory</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -17,7 +17,7 @@
       overflow: hidden;
     }
     header {
-      padding: 10px 14px;
+      padding: 10px 12px;
       background: #091222;
       border-bottom: 1px solid #1b3252;
       display: flex;
@@ -25,17 +25,18 @@
       align-items: center;
     }
     header h1 {
-      font-size: 15px;
+      font-size: 14px;
       letter-spacing: 1.5px;
       color: #00f0ff;
     }
+    .header-btns { display: flex; gap: 6px; }
     .small-btn {
       background: #13243a;
       color: #00f0ff;
       border: 1px solid #00f0ff;
       padding: 6px 10px;
       border-radius: 6px;
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 600;
       cursor: pointer;
     }
@@ -110,6 +111,43 @@
       from { transform: scale(1); }
       to { transform: scale(1.3); }
     }
+    /* Memory Vault Modal Drawer */
+    #memoryModal {
+      position: fixed;
+      inset: 0;
+      background: rgba(3, 7, 15, 0.94);
+      z-index: 100;
+      display: none;
+      flex-direction: column;
+      padding: 16px;
+    }
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #00f0ff;
+      padding-bottom: 10px;
+      margin-bottom: 10px;
+    }
+    .modal-header h2 { font-size: 15px; color: #00f0ff; }
+    #memoryContent {
+      flex: 1;
+      overflow-y: auto;
+      font-family: monospace;
+      font-size: 12px;
+      color: #c9e4ff;
+      white-space: pre-wrap;
+      line-height: 1.45;
+      background: #07101e;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid #1b3252;
+    }
+    .modal-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+    }
     #controls {
       background: #091222;
       border-top: 2px solid #00f0ff;
@@ -171,22 +209,38 @@
 <body>
 
   <header>
-    <h1>J.A.R.V.I.S. LIVE SCANNER</h1>
-    <button id="flipBtn" class="small-btn">Flip Cam</button>
+    <h1>J.A.R.V.I.S. LIVE</h1>
+    <div class="header-btns">
+      <button id="memBtn" class="small-btn">Memory (0)</button>
+      <button id="flipBtn" class="small-btn">Flip Cam</button>
+    </div>
   </header>
 
   <div id="viewport">
     <div id="placeholder">
-      <b>J.A.R.V.I.S. Multimodal Live</b><br><br>
-      • Powered by Groq Qwen 3.8 27B Vision<br>
-      • Continuous 3-Frame Camera Buffer<br>
-      • Short & Sweet Spoken Replies
+      <b>J.A.R.V.I.S. Multimodal + Long-Term Memory</b><br><br>
+      • Remembers all past conversations & dates<br>
+      • Auto-saves key facts to Core Memory<br>
+      • 3-Frame Live Camera Vision
     </div>
     <video id="camera" autoplay playsinline muted></video>
     <div id="scanOverlay"></div>
     <div id="scanBadge">LIVE SCAN: 0 FRAMES</div>
     <div id="reactor">IDLE</div>
     <canvas id="snapCanvas" style="display:none;"></canvas>
+  </div>
+
+  <!-- Memory Vault Drawer -->
+  <div id="memoryModal">
+    <div class="modal-header">
+      <h2>J.A.R.V.I.S. MEMORY VAULT</h2>
+      <button id="closeMemBtn" class="small-btn">Close</button>
+    </div>
+    <div id="memoryContent"></div>
+    <div class="modal-actions">
+      <button id="exportMemBtn" class="small-btn" style="flex:1; padding:10px;">Export JSON</button>
+      <button id="clearMemBtn" class="small-btn danger" style="flex:1; padding:10px;">Clear All Memory</button>
+    </div>
   </div>
 
   <div id="controls">
@@ -205,7 +259,7 @@
       <button id="startBtn" class="main-btn">Start Live Call</button>
       <button id="manualTalkBtn" class="talk-btn" disabled>Tap to Speak Now</button>
     </div>
-    <div id="logBox">Ready. Paste your Groq key and tap Start Live Call.</div>
+    <div id="logBox">Ready. All conversations are saved automatically.</div>
   </div>
 
   <script>
@@ -219,17 +273,67 @@
     const startBtn = document.getElementById("startBtn");
     const manualTalkBtn = document.getElementById("manualTalkBtn");
     const apiKeyInput = document.getElementById("apiKey");
+    const memBtn = document.getElementById("memBtn");
+    const memoryModal = document.getElementById("memoryModal");
+    const memoryContent = document.getElementById("memoryContent");
 
+    // 1. Load API Key & Persistent Memory from LocalStorage
     apiKeyInput.value = localStorage.getItem("groq_key") || "";
     apiKeyInput.addEventListener("input", () => {
       localStorage.setItem("groq_key", apiKeyInput.value.trim());
     });
 
+    // Full conversation log: [{ role, content, timestamp }]
+    let fullArchive = JSON.parse(localStorage.getItem("jarvis_archive") || "[]");
+    // Core permanent facts: ["User owns a Vivo Y300", ...]
+    let coreFacts = JSON.parse(localStorage.getItem("jarvis_facts") || "[]");
+
+    function updateMemoryBadge() {
+      const turns = Math.floor(fullArchive.length / 2);
+      memBtn.textContent = "Memory (" + turns + " chats | " + coreFacts.length + " facts)";
+    }
+    updateMemoryBadge();
+
+    function saveMemoryToDisk() {
+      localStorage.setItem("jarvis_archive", JSON.stringify(fullArchive));
+      localStorage.setItem("jarvis_facts", JSON.stringify(coreFacts));
+      updateMemoryBadge();
+    }
+
+    // 2. Smart Memory Search (Finds relevant older conversations by keyword)
+    function searchPastArchive(query) {
+      if (fullArchive.length <= 8) return "";
+      const stopWords = new Set(["what", "when", "where", "which", "who", "whom", "this", "that", "these", "those", "have", "from", "with", "about", "jarvis", "tell", "remember", "did", "you", "the", "and", "for"]);
+      const words = query.toLowerCase().replace(/[^a-z0-9\s]/g, "").split(/\s+/).filter(w => w.length > 2 && !stopWords.has(w));
+      if (words.length === 0) return "";
+
+      // Search older messages (excluding the last 8 which are already in recent context)
+      const olderHistory = fullArchive.slice(0, -8);
+      const scoredMatches = [];
+
+      for (let i = 0; i < olderHistory.length; i++) {
+        const entry = olderHistory[i];
+        const textLower = entry.content.toLowerCase();
+        let score = 0;
+        for (const w of words) {
+          if (textLower.includes(w)) score++;
+        }
+        if (score > 0) {
+          // Include the paired reply if available
+          const nextEntry = olderHistory[i + 1];
+          const pairText = "[" + entry.timestamp + "] " + entry.role.toUpperCase() + ": " + entry.content +
+            (nextEntry ? "\n[" + nextEntry.timestamp + "] " + nextEntry.role.toUpperCase() + ": " + nextEntry.content : "");
+          scoredMatches.push({ score, pairText });
+        }
+      }
+
+      scoredMatches.sort((a, b) => b.score - a.score);
+      return scoredMatches.slice(0, 4).map(m => m.pairText).join("\n---\n");
+    }
+
     let mediaStream = null;
     let facingMode = "environment";
     let isRunning = false;
-
-    // Continuous 1 FPS Video Frame Rolling Buffer (Max 3 images supported by Qwen 3.8 27B)
     let frameBuffer = [];
     let frameScanTimer = null;
     let totalFramesScanned = 0;
@@ -243,15 +347,7 @@
     let silenceStart = 0;
     let speechStart = 0;
     let isProcessingAPI = false;
-
     let recognition = null;
-    let chatHistory = [];
-
-    const SYSTEM_PROMPT =
-      "You are J.A.R.V.I.S., Tony Stark's warm, witty, and loyal AI assistant. " +
-      "You are in a real-time video call and can see through the user's camera frames. " +
-      "STRICT RULE: Keep every answer short, sweet, and natural for spoken voice—maximum 1 to 2 short sentences (under 25 words) unless asked for detail. " +
-      "Address the user warmly as Sir, never use markdown symbols, and directly describe or answer based on what you see.";
 
     function log(msg) {
       const t = new Date().toLocaleTimeString();
@@ -263,16 +359,8 @@
       try {
         if (mediaStream) mediaStream.getTracks().forEach(t => t.stop());
         mediaStream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            facingMode: facingMode,
-            width: { ideal: 800 },
-            height: { ideal: 600 }
-          },
-          audio: {
-            echoCancellation: true,
-            noiseSuppression: true,
-            autoGainControl: true
-          }
+          video: { facingMode: facingMode, width: { ideal: 800 }, height: { ideal: 600 } },
+          audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
         });
         videoEl.srcObject = mediaStream;
         videoEl.style.display = "block";
@@ -299,14 +387,14 @@
         const dataUrl = canvasEl.toDataURL("image/jpeg", 0.68);
 
         frameBuffer.push(dataUrl);
-        // Qwen 3.8 27B supports up to 3 images per request
         if (frameBuffer.length > 3) frameBuffer.shift();
 
         totalFramesScanned++;
-        scanBadge.textContent = "LIVE SCAN: " + frameBuffer.length + " FRAMES BUFFERED (" + totalFramesScanned + "s)";
+        scanBadge.textContent = "LIVE SCAN: " + frameBuffer.length + " FRAMES (" + totalFramesScanned + "s)";
       }, 1000);
     }
 
+    // 3. Send Prompt + Long-Term Memory + Live Camera Frames to Qwen 3.8 27B
     async function askJarvisVision(userText) {
       const apiKey = apiKeyInput.value.trim();
       if (!apiKey) {
@@ -335,10 +423,34 @@
         frameBuffer.push(canvasEl.toDataURL("image/jpeg", 0.68));
       }
 
+      // Build Dynamic Memory Context
+      const factsBlock = coreFacts.length > 0
+        ? "\nPERMANENT CORE FACTS ABOUT USER:\n- " + coreFacts.join("\n- ")
+        : "\nPERMANENT CORE FACTS ABOUT USER: None saved yet.";
+
+      const retrievedPast = searchPastArchive(cleanText);
+      const archiveBlock = retrievedPast
+        ? "\nRELEVANT PAST CONVERSATIONS FROM ARCHIVE:\n" + retrievedPast
+        : "";
+
+      const systemPrompt =
+        "You are J.A.R.V.I.S., Tony Stark's warm, witty, and loyal AI assistant. " +
+        "You are in a live video call and have persistent memory of all past conversations. " +
+        "STRICT RULE 1: Keep spoken replies short and sweet—1 to 2 sentences (under 25 words) unless asked for detail. Address the user as Sir and never use markdown. " +
+        "STRICT RULE 2: If the user tells you a new personal fact, preference, item location, schedule, or asks you to remember something, append [REMEMBER: concise fact with date/context] at the very end of your response." +
+        factsBlock +
+        archiveBlock;
+
+      // Include last 8 messages for immediate conversation continuity
+      const recentMessages = fullArchive.slice(-8).map(m => ({
+        role: m.role,
+        content: "[" + m.timestamp + "] " + m.content
+      }));
+
       const userContent = [
         {
           type: "text",
-          text: cleanText + " (Reply briefly and sweetly as Jarvis in 1-2 short spoken sentences based on these live camera frames.)"
+          text: cleanText + " (Current Time: " + new Date().toLocaleString() + ". Reply briefly and sweetly as Jarvis.)"
         }
       ];
 
@@ -350,8 +462,8 @@
       }
 
       const messages = [
-        { role: "system", content: SYSTEM_PROMPT },
-        ...chatHistory.slice(-4),
+        { role: "system", content: systemPrompt },
+        ...recentMessages,
         { role: "user", content: userContent }
       ];
 
@@ -367,7 +479,7 @@
             reasoning_effort: "none",
             messages: messages,
             temperature: 0.6,
-            max_completion_tokens: 90
+            max_completion_tokens: 110
           })
         });
 
@@ -379,14 +491,31 @@
           return;
         }
 
-        let reply = (data.choices?.[0]?.message?.content || "Right here with you, Sir.").trim();
-        reply = reply.replace(/<think>[\s\S]*?<\/think>/gi, "").replace(/[*#`_~]/g, "").trim();
+        let rawReply = (data.choices?.[0]?.message?.content || "Right here with you, Sir.").trim();
+        rawReply = rawReply.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
 
-        chatHistory.push({ role: "user", content: cleanText });
-        chatHistory.push({ role: "assistant", content: reply });
+        // Extract any [REMEMBER: ...] tags and save to Core Facts
+        const rememberRegex = /\[REMEMBER:\s*(.*?)\]/gi;
+        let match;
+        while ((match = rememberRegex.exec(rawReply)) !== null) {
+          const newFact = match[1].trim();
+          if (newFact && !coreFacts.includes(newFact)) {
+            coreFacts.push(newFact + " (Saved " + new Date().toLocaleDateString() + ")");
+            log("💾 Saved to Core Memory: " + newFact);
+          }
+        }
 
-        log("Jarvis: \"" + reply + "\"");
-        speakJarvisSweetly(reply);
+        // Clean reply for voice speech
+        const cleanReply = rawReply.replace(/\[REMEMBER:[\s\S]*?\]/gi, "").replace(/[*#`_~]/g, "").trim();
+
+        // Save both turns permanently to Full Archive
+        const nowStamp = new Date().toLocaleString();
+        fullArchive.push({ role: "user", content: cleanText, timestamp: nowStamp });
+        fullArchive.push({ role: "assistant", content: cleanReply, timestamp: nowStamp });
+        saveMemoryToDisk();
+
+        log("Jarvis: \"" + cleanReply + "\"");
+        speakJarvisSweetly(cleanReply);
       } catch (err) {
         log("NETWORK ERROR: " + err.message);
         reactorEl.textContent = "LISTEN";
@@ -433,7 +562,7 @@
       formData.append("file", audioBlob, "speech.webm");
       formData.append("model", "whisper-large-v3");
       formData.append("language", "en");
-      formData.append("prompt", "Jarvis, Sir, camera, live video call.");
+      formData.append("prompt", "Jarvis, Sir, remember, memory, camera, live video call.");
       formData.append("temperature", "0");
 
       try {
@@ -571,6 +700,41 @@
       }
     };
 
+    // Memory Vault Viewer Controls
+    memBtn.onclick = () => {
+      let display = "=== CORE FACTS BANK (" + coreFacts.length + ") ===\n";
+      display += coreFacts.length ? coreFacts.map((f, i) => (i + 1) + ". " + f).join("\n") : "No core facts saved yet. Tell Jarvis 'Remember that...'";
+      display += "\n\n=== CONVERSATION ARCHIVE (" + fullArchive.length + " messages) ===\n";
+      display += fullArchive.length
+        ? fullArchive.map(m => "[" + m.timestamp + "] " + (m.role === "user" ? "YOU" : "JARVIS") + ": " + m.content).join("\n\n")
+        : "No conversations recorded yet.";
+      memoryContent.textContent = display;
+      memoryModal.style.display = "flex";
+    };
+
+    document.getElementById("closeMemBtn").onclick = () => {
+      memoryModal.style.display = "none";
+    };
+
+    document.getElementById("exportMemBtn").onclick = () => {
+      const backup = JSON.stringify({ coreFacts, fullArchive }, null, 2);
+      const blob = new Blob([backup], { type: "application/json" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "jarvis-memory-backup.json";
+      a.click();
+    };
+
+    document.getElementById("clearMemBtn").onclick = () => {
+      if (confirm("Erase all saved conversations and core facts?")) {
+        fullArchive = [];
+        coreFacts = [];
+        saveMemoryToDisk();
+        memoryContent.textContent = "Memory wiped.";
+        log("Memory vault cleared.");
+      }
+    };
+
     manualTalkBtn.onclick = () => {
       if (!isRecordingSpeech) {
         window.speechSynthesis.cancel();
@@ -605,7 +769,7 @@
         if (document.getElementById("sttMode").value === "browser_in" && recognition) {
           try { recognition.start(); } catch (_) {}
         }
-        log("Live Scanner Active! Qwen 3.8 27B Vision connected.");
+        log("Live Scanner Active! Loaded " + coreFacts.length + " facts & " + fullArchive.length + " past messages.");
       } else {
         isRunning = false;
         manualTalkBtn.disabled = true;
@@ -623,7 +787,7 @@
         startBtn.classList.remove("danger");
         reactorEl.classList.remove("vad-recording", "speaking");
         reactorEl.textContent = "IDLE";
-        log("Call ended.");
+        log("Call ended. All conversations saved.");
       }
     };
 
